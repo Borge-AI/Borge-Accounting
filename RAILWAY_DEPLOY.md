@@ -94,6 +94,17 @@ Or for multiple origins:
 - Check PostgreSQL service is running
 - Ensure database migrations run (tables auto-create on startup)
 
+### 502 Bad Gateway (Application Failed to Respond)
+The app starts (logs show "Uvicorn running on http://0.0.0.0:8080") but requests get 502. **Fix the target port:**
+
+1. In Railway, open your **backend service** → **Settings**
+2. Find **Networking** / **Public Networking** → **Target Port** (or "Port")
+3. Either **clear** the target port (leave empty so Railway uses the same as `PORT`), or set it to the port from your logs (e.g. **8080**)
+4. If it was set to e.g. 8000 or 3000 while the app listens on 8080, that mismatch causes 502
+5. Save and **redeploy** if needed
+
+Your start command uses `--port $PORT`; the public domain must forward to that same port.
+
 ### CORS Errors
 - Verify `CORS_ORIGINS` includes your Vercel URL
 - Check format is valid JSON array
