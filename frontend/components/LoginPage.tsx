@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useAuthStore } from '@/store/authStore'
+import { API_BASE_URL } from '@/lib/api'
 
 export default function LoginPage() {
   const [isRegister, setIsRegister] = useState(false)
@@ -17,7 +18,9 @@ export default function LoginPage() {
     const detail = err.response?.data?.detail
     if (typeof detail === 'string') return detail
     if (Array.isArray(detail) && detail[0]?.msg) return detail[0].msg
-    if (err.response?.status === 0 || err.message === 'Network Error') return 'Cannot reach server. Check API URL and CORS.'
+    if (err.response?.status === 0 || err.message === 'Network Error') {
+      return `Cannot reach server. Check API URL and CORS. (Using: ${API_BASE_URL})`
+    }
     return fallback
   }
 
