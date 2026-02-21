@@ -21,8 +21,8 @@ COPY . .
 # Create uploads directory
 RUN mkdir -p uploads
 
-# Expose port
+# Expose port (Railway uses PORT env var)
 EXPOSE 8000
 
-# Run application
+# Run application (Railway will override with PORT env var via railway.json)
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
