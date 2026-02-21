@@ -14,6 +14,7 @@ interface AuthState {
   user: User | null
   isAuthenticated: boolean
   login: (email: string, password: string) => Promise<void>
+  register: (email: string, password: string, fullName: string, role: string) => Promise<void>
   logout: () => void
   checkAuth: () => Promise<void>
 }
@@ -36,6 +37,26 @@ export const useAuthStore = create<AuthState>((set) => ({
     const { access_token } = response.data
     Cookies.set('access_token', access_token, { expires: 1 })
 
+    const userResponse = await api.get('/auth/me')
+    set({ user: userResponse.data, isAuthenticated: true })
+  },
+
+  register: async (email: string, password: string, fullName: string, role: string) => {
+    await api.post('/auth/register', {
+      email,
+      password,
+      full_name: fullName,
+      role: role || 'accountant',
+    })
+    // Log in with the new account
+    const params = new URLSearchParams()
+    params.append('username', email)
+    params.append('password', password)
+    const response = await api.post('/auth/login', params.toString(), {
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    })
+    const { access_token } = response.data
+    Cookies.set('access_token', access_token, { expires: 1 })
     const userResponse = await api.get('/auth/me')
     set({ user: userResponse.data, isAuthenticated: true })
   },
