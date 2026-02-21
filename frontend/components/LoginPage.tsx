@@ -19,7 +19,8 @@ export default function LoginPage() {
     if (typeof detail === 'string') return detail
     if (Array.isArray(detail) && detail[0]?.msg) return detail[0].msg
     if (err.response?.status === 0 || err.message === 'Network Error') {
-      return `Cannot reach server. Check API URL and CORS. (Using: ${API_BASE_URL})`
+      const displayUrl = (() => { try { return new URL(API_BASE_URL).origin } catch { return API_BASE_URL } })()
+      return `Cannot reach server. Check API URL and CORS. (Using: ${displayUrl})`
     }
     return fallback
   }
