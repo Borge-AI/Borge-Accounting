@@ -1,7 +1,7 @@
 """
 Rule validation service for accounting rules and compliance checks.
 """
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 from app.db.models import RiskLevel
 
 
