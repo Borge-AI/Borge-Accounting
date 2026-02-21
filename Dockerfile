@@ -27,4 +27,5 @@ RUN mkdir -p uploads
 EXPOSE 8000
 
 # Run application (Railway will override with PORT env var via railway.json)
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Use shell form to allow env var expansion
+CMD uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}
