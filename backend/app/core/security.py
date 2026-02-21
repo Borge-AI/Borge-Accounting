@@ -62,8 +62,12 @@ async def get_current_user(
     if payload is None:
         raise credentials_exception
     
-    user_id: int = payload.get("sub")
-    if user_id is None:
+    raw_sub = payload.get("sub")
+    if raw_sub is None:
+        raise credentials_exception
+    try:
+        user_id = int(raw_sub)
+    except (TypeError, ValueError):
         raise credentials_exception
     
     user = db.query(models.User).filter(models.User.id == user_id).first()

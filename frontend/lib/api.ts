@@ -19,13 +19,15 @@ api.interceptors.request.use((config) => {
   return config
 })
 
-// Handle auth errors
+// Handle auth errors: redirect to login only when not already on home (avoids wiping error on login/me failure)
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
       Cookies.remove('access_token')
-      window.location.href = '/'
+      if (typeof window !== 'undefined' && window.location.pathname !== '/') {
+        window.location.href = '/'
+      }
     }
     return Promise.reject(error)
   }
