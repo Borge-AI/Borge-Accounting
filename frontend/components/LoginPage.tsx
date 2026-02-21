@@ -13,6 +13,14 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const { login, register } = useAuthStore()
 
+  const getErrorMessage = (err: any, fallback: string) => {
+    const detail = err.response?.data?.detail
+    if (typeof detail === 'string') return detail
+    if (Array.isArray(detail) && detail[0]?.msg) return detail[0].msg
+    if (err.response?.status === 0 || err.message === 'Network Error') return 'Cannot reach server. Check API URL and CORS.'
+    return fallback
+  }
+
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
@@ -20,7 +28,7 @@ export default function LoginPage() {
     try {
       await login(email, password)
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Login failed')
+      setError(getErrorMessage(err, 'Login failed'))
     } finally {
       setLoading(false)
     }
@@ -33,7 +41,7 @@ export default function LoginPage() {
     try {
       await register(email, password, fullName, role)
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Registration failed')
+      setError(getErrorMessage(err, 'Registration failed'))
     } finally {
       setLoading(false)
     }
