@@ -9,15 +9,15 @@ interface AuditLogViewerProps {
 
 interface AuditLog {
   id: number
-  user_id: number
-  invoice_id: number
+  user_id: number | null
+  invoice_id: number | null
   action: string
-  raw_ocr_output: string
-  ai_prompt: string
-  ai_response: string
-  metadata: string
-  ip_address: string
-  user_agent: string
+  raw_ocr_output: string | null
+  ai_prompt: string | null
+  ai_response: string | null
+  extra_data: string | null
+  ip_address: string | null
+  user_agent: string | null
   created_at: string
 }
 
@@ -133,11 +133,11 @@ export default function AuditLogViewer({ onClose }: AuditLogViewerProps) {
                 </pre>
               </div>
             )}
-            {selectedLog.metadata && (
+            {selectedLog.extra_data && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Metadata</label>
                 <pre className="bg-gray-50 p-3 rounded text-xs overflow-auto max-h-40">
-                  {selectedLog.metadata}
+                  {selectedLog.extra_data}
                 </pre>
               </div>
             )}

@@ -3,7 +3,7 @@ Audit log endpoints (admin only).
 """
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 from app.db.database import get_db
 from app.db import models
 from app.core.security import get_current_active_user, require_role
@@ -15,15 +15,15 @@ router = APIRouter()
 class AuditLogResponse(BaseModel):
     """Audit log response schema."""
     id: int
-    user_id: int
-    invoice_id: int
+    user_id: Optional[int] = None
+    invoice_id: Optional[int] = None
     action: str
-    raw_ocr_output: str
-    ai_prompt: str
-    ai_response: str
-    metadata: str
-    ip_address: str
-    user_agent: str
+    raw_ocr_output: Optional[str] = None
+    ai_prompt: Optional[str] = None
+    ai_response: Optional[str] = None
+    extra_data: Optional[str] = None  # was 'metadata'; reserved in SQLAlchemy
+    ip_address: Optional[str] = None
+    user_agent: Optional[str] = None
     created_at: str
     
     class Config:

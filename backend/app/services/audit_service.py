@@ -32,7 +32,7 @@ class AuditService:
             raw_ocr_output=raw_ocr_output,
             ai_prompt=ai_prompt,
             ai_response=ai_response,
-            metadata=json.dumps(metadata) if metadata else None,
+            extra_data=json.dumps(metadata) if metadata else None,
             ip_address=ip_address,
             user_agent=user_agent,
             created_at=datetime.utcnow()

@@ -109,7 +109,7 @@ class AuditLog(Base):
     raw_ocr_output = Column(Text, nullable=True)
     ai_prompt = Column(Text, nullable=True)
     ai_response = Column(Text, nullable=True)
-    metadata = Column(Text, nullable=True)  # JSON string for additional data
+    extra_data = Column("metadata", Text, nullable=True)  # JSON string; 'metadata' reserved by SQLAlchemy
     ip_address = Column(String, nullable=True)
     user_agent = Column(String, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
