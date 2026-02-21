@@ -2,7 +2,7 @@
 Application configuration settings.
 """
 from pydantic_settings import BaseSettings
-from pydantic import field_validator
+from pydantic import field_validator, Field
 from typing import List, Union
 import json
 import os
@@ -15,12 +15,15 @@ class Settings(BaseSettings):
     DATABASE_URL: str
     
     # JWT (set in Railway Variables; e.g. generate with: openssl rand -hex 32)
-    SECRET_KEY: str
+    SECRET_KEY: str = Field(
+        default="change-me-in-production-use-openssl-rand-hex-32",
+        description="JWT signing key; set in production",
+    )
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440
     
-    # OpenAI
-    OPENAI_API_KEY: str
+    # OpenAI (set in Railway Variables; get from platform.openai.com/api-keys)
+    OPENAI_API_KEY: str = Field(default="", description="OpenAI API key; set for AI suggestions")
     
     # OCR
     TESSERACT_CMD: str = "/usr/bin/tesseract"

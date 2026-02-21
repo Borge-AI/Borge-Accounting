@@ -32,6 +32,15 @@ app.add_middleware(
 app.include_router(api_router, prefix="/api/v1")
 
 
+@app.on_event("startup")
+async def startup_warnings():
+    """Warn if running with default/empty secrets (set in Railway for production)."""
+    if "change-me-in-production" in settings.SECRET_KEY:
+        print("WARNING: Using default SECRET_KEY. Set SECRET_KEY in Railway Variables for production.")
+    if not settings.OPENAI_API_KEY:
+        print("WARNING: OPENAI_API_KEY not set. AI suggestions will fail until you set it in Railway Variables.")
+
+
 @app.get("/health")
 async def health_check():
     """Health check endpoint."""
