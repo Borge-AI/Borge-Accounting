@@ -32,6 +32,12 @@ app.add_middleware(
 app.include_router(api_router, prefix="/api/v1")
 
 
+@app.get("/")
+async def root():
+    """Root endpoint for health/probe checks and opening the API URL in a browser."""
+    return {"service": "accounting-assistant-api", "docs": "/api/docs", "health": "/health"}
+
+
 @app.on_event("startup")
 async def startup_warnings():
     """Warn if running with default/empty secrets (set in Railway for production)."""
