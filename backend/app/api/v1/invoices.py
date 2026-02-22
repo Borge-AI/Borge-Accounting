@@ -3,7 +3,7 @@ Invoice endpoints for document upload and processing.
 """
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Request
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 from pathlib import Path
 import os
 import uuid
@@ -11,11 +11,9 @@ from app.db.database import get_db
 from app.db import models
 from app.core.security import get_current_active_user
 from app.core.config import settings
-from app.services.ocr_service import ocr_service
-from app.services.ai_service import ai_service
-from app.services.rule_validation_service import rule_validation_service
-from app.services.confidence_scoring_service import confidence_scoring_service
 from app.services.audit_service import audit_service
+from app.services.workflow_engine import run_workflow
+from app.services.workflow_steps import DEFAULT_INVOICE_STEPS
 from pydantic import BaseModel
 from datetime import datetime
 
@@ -107,9 +105,9 @@ async def upload_invoice(
         user_agent=user_agent
     )
     
-    # Process invoice asynchronously (in production, use background tasks)
+    # Process invoice via workflow (OCR → AI → rules → save; safe dataflow, audited)
     try:
-        await process_invoice(db, invoice.id)
+        await process_invoice(db, invoice.id, current_user.id)
     except Exception as e:
         invoice.status = models.ProcessingStatus.ERROR
         db.commit()
@@ -121,70 +119,27 @@ async def upload_invoice(
     return invoice
 
 
-async def process_invoice(db: Session, invoice_id: int):
-    """Process an invoice through OCR and AI pipeline."""
+async def process_invoice(db: Session, invoice_id: int, user_id: Optional[int] = None):
+    """Process an invoice via the default workflow (OCR → AI → rules → save). Safe dataflow, every step audited."""
     invoice = db.query(models.Invoice).filter(models.Invoice.id == invoice_id).first()
     if not invoice:
         return
-    
     try:
-        # Step 1: OCR
-        invoice.status = models.ProcessingStatus.PROCESSING
-        db.commit()
-        
-        ocr_text = ocr_service.extract_text(invoice.file_path, invoice.mime_type)
-        
-        # Log OCR output
-        audit_service.log_ocr_complete(db=db, invoice_id=invoice.id, ocr_output=ocr_text)
-        
-        invoice.status = models.ProcessingStatus.OCR_COMPLETE
-        db.commit()
-        
-        # Step 2: AI Processing
-        invoice.status = models.ProcessingStatus.AI_PROCESSING
-        db.commit()
-        
-        ai_prompt = ai_service.get_prompt_for_audit(ocr_text)
-        ai_result = ai_service.generate_suggestion(ocr_text)
-        
-        # Log AI processing
-        audit_service.log_ai_suggestion(
+        context = {
+            "invoice_id": invoice_id,
+            "file_path": invoice.file_path,
+            "mime_type": invoice.mime_type,
+            "user_id": user_id or invoice.uploaded_by,
+        }
+        run_workflow(
+            trigger="invoice_uploaded",
+            context=context,
+            steps=DEFAULT_INVOICE_STEPS,
             db=db,
-            invoice_id=invoice.id,
-            ai_prompt=ai_prompt,
-            ai_response=str(ai_result)
+            user_id=user_id or invoice.uploaded_by,
+            invoice_id=invoice_id,
         )
-        
-        # Step 3: Rule validation and confidence scoring
-        final_confidence = confidence_scoring_service.calculate_final_confidence(
-            ai_confidence=ai_result["confidence"],
-            account_number=ai_result["account_number"],
-            vat_code=ai_result["vat_code"]
-        )
-        
-        # Apply risk rules
-        risk_level = rule_validation_service.check_risk_rules(
-            account_number=ai_result["account_number"],
-            vat_code=ai_result["vat_code"],
-            confidence=final_confidence
-        )
-        
-        # Create suggestion
-        suggestion = models.Suggestion(
-            invoice_id=invoice.id,
-            account_number=ai_result["account_number"],
-            vat_code=ai_result["vat_code"],
-            confidence_score=final_confidence,
-            risk_level=risk_level,
-            notes=ai_result.get("reasoning", "")
-        )
-        
-        db.add(suggestion)
-        
-        invoice.status = models.ProcessingStatus.COMPLETE
-        db.commit()
-        
-    except Exception as e:
+    except Exception:
         invoice.status = models.ProcessingStatus.ERROR
         db.commit()
         raise

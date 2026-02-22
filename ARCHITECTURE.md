@@ -236,12 +236,50 @@ docker-compose up
 - **APM**: New Relic / Datadog
 - **Audit Logs**: Separate immutable storage
 
+## Workflows & Safe Dataflow (Zapier/Make-style)
+
+The AI and services are designed to work like **workflow automation** (Zapier, Make) but with **strict, auditable dataflow** so accounting data stays safe and compliant.
+
+### Concepts
+
+- **Trigger** – Event that starts a workflow (e.g. `invoice_uploaded`, `suggestion_approved`).
+- **Step / Action** – One unit of work: OCR, AI suggestion, rule validation, webhook, save to DB. Each step has defined **inputs** and **outputs**.
+- **Workflow** – Ordered list of steps that run when a trigger fires. Can be the default pipeline or user-defined (future).
+- **Safe dataflow** – Data moves only through a **context** object. Each step can read only the context keys it is allowed to see and write only allowed keys back. No step can touch arbitrary DB rows or send arbitrary data out; external calls (OpenAI, webhooks) go through a single layer that **audits** what was sent and received.
+
+### Safe Dataflow Rules
+
+1. **Single context** – A workflow run has one context (e.g. `invoice_id`, `ocr_text`, `ai_result`, `user_id`). Steps receive a copy of the context and return only approved updates.
+2. **No hidden data** – PII and document content only enter the context through explicit steps (e.g. OCR writes `ocr_text`). Steps that send data out (AI, webhook) only get the keys they are configured to use.
+3. **Audit every external call** – Before calling OpenAI or a webhook, we log: trigger, step name, which context keys were used (not necessarily full values for PII), timestamp, user/invoice. After the call we log success/failure and a hash or summary of the response (no raw PII in logs unless required by policy).
+4. **Audit every step** – Each step execution is logged (step name, input key names, output key names, success/failure, duration).
+5. **Tenant isolation** – Context is always scoped to a user/tenant; workflows cannot access another tenant’s data.
+
+### Default Workflow (Current Invoice Pipeline)
+
+Trigger: **invoice_uploaded**  
+Steps:
+
+1. **ocr** – Input: `invoice_id`, `file_path`, `mime_type`. Output: `ocr_text`. Audit: log OCR completion.
+2. **ai_suggestion** – Input: `ocr_text`. Output: `ai_result` (account_number, vat_code, confidence, risk_level, reasoning). Audit: log prompt + response (already in place).
+3. **rule_validation** – Input: `ai_result`. Output: `risk_level`, `confidence_score`. No external call.
+4. **save_suggestion** – Input: `invoice_id`, `ai_result`, `risk_level`, `confidence_score`. Output: (none). Writes to DB.
+
+Future steps could include: **webhook** (with URL allowlist and full audit), **send_email**, **sync_to_visma**, etc., all with the same pattern: defined inputs/outputs and audit.
+
+### Implementation Notes
+
+- **Workflow engine** – `app/services/workflow_engine.py`: runs a list of steps in order, passes context, enforces allowed keys, calls audit before/after external steps.
+- **Step registry** – Each action type (ocr, ai_suggestion, rule_validation, save_suggestion, future webhook) is registered with its allowed input/output keys and whether it is “external” (must be audited).
+- **Audit** – Existing `AuditService` is extended with `log_workflow_step` and `log_external_call` (or reuse `log_action` with action names like `workflow_step`, `external_call`).
+
 ## Future Enhancements
 
 - Multi-language support (beyond Norwegian)
 - Advanced analytics dashboard
 - Accounting system integrations (Visma, Tripletex, etc.)
 - Batch processing capabilities
-- Webhook notifications
+- Webhook notifications (as workflow steps with safe dataflow and audit)
+- User-defined workflows (UI to add/order steps, configure webhooks)
 - Mobile app support
 - Advanced ML models for better accuracy
